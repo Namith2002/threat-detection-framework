@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Threat Detection Framework - Real-Time Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-shield-alt"></i>
+                <span>Threat Detection Framework</span>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="#dashboard" class="active">Dashboard</a></li>
+                <li><a href="#threats">Threats</a></li>
+                <li><a href="#analytics">Analytics</a></li>
+                <li><a href="#settings">Settings</a></li>
+            </ul>
+            <div class="navbar-status">
+                <span id="monitoring-status" class="status-badge inactive">
+                    <i class="fas fa-circle"></i> Monitoring: OFF
+                </span>
+                <button id="monitoring-toggle" class="btn btn-sm btn-primary">
+                    <i class="fas fa-play"></i> Start
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-main">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3><i class="fas fa-chart-line"></i> Quick Stats</h3>
+                <div class="stat-card">
+                    <span class="stat-label">Threats (24h)</span>
+                    <span class="stat-value" id="daily-threats">0</span>
+                </div>
+                <div class="stat-card critical">
+                    <span class="stat-label">Critical</span>
+                    <span class="stat-value" id="critical-threats">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Alerts</span>
+                    <span class="stat-value" id="alert-count">0</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3><i class="fas fa-server"></i> System Health</h3>
+                <div class="metric">
+                    <label>CPU Usage</label>
+                    <div class="metric-bar">
+                        <div id="cpu-meter" class="metric-fill"></div>
+                    </div>
+                    <span id="cpu-value">0%</span>
+                </div>
+                <div class="metric">
+                    <label>Memory Usage</label>
+                    <div class="metric-bar">
+                        <div id="memory-meter" class="metric-fill"></div>
+                    </div>
+                    <span id="memory-value">0%</span>
+                </div>
+                <div class="metric">
+                    <label>Network Traffic</label>
+                    <div class="metric-bar">
+                        <div id="network-meter" class="metric-fill"></div>
+                    </div>
+                    <span id="network-value">0 Mbps</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3><i class="fas fa-tools"></i> Tools</h3>
+                <button class="btn btn-full" onclick="openAnalyzer()">
+                    <i class="fas fa-microscope"></i> Threat Analyzer
+                </button>
+                <button class="btn btn-full" onclick="openExport()">
+                    <i class="fas fa-download"></i> Export Data
+                </button>
+                <button class="btn btn-full" onclick="openSettings()">
+                    <i class="fas fa-cog"></i> Settings
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <h1>Real-Time Threat Dashboard</h1>
+
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <h3>Recent Threats (1h)</h3>
+                        </div>
+                        <div class="kpi-value" id="recent-threats">0</div>
+                        <div class="kpi-trend">
+                            <i class="fas fa-arrow-up"></i> <span id="threats-trend">0%</span> vs last hour
+                        </div>
+                    </div>
+
+                    <div class="kpi-card warning">
+                        <div class="kpi-header">
+                            <h3>High Severity</h3>
+                        </div>
+                        <div class="kpi-value" id="high-severity">0</div>
+                        <div class="kpi-trend">
+                            Needs attention
+                        </div>
+                    </div>
+
+                    <div class="kpi-card danger">
+                        <div class="kpi-header">
+                            <h3>Critical Threats</h3>
+                        </div>
+                        <div class="kpi-value" id="critical-count">0</div>
+                        <div class="kpi-trend">
+                            Immediate action required
+                        </div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <h3>Avg Confidence</h3>
+                        </div>
+                        <div class="kpi-value" id="avg-confidence">0%</div>
+                        <div class="kpi-trend">
+                            Detection accuracy
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-grid">
+                    <!-- Threat Timeline -->
+                    <div class="chart-card full-width">
+                        <h2>Threat Timeline (24h)</h2>
+                        <canvas id="timeline-chart"></canvas>
+                    </div>
+
+                    <!-- Threat Types Distribution -->
+                    <div class="chart-card">
+                        <h2>Threat Types</h2>
+                        <canvas id="threat-types-chart"></canvas>
+                    </div>
+
+                    <!-- Severity Distribution -->
+                    <div class="chart-card">
+                        <h2>Severity Distribution</h2>
+                        <canvas id="severity-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Real-Time Threats Feed -->
+                <div class="feed-card">
+                    <h2>Real-Time Threat Feed</h2>
+                    <div class="threat-filters">
+                        <input type="text" id="threat-filter" placeholder="Filter threats...">
+                        <label for="severity-filter">Severity:</label>
+                        <select id="severity-filter" title="Filter threats by severity level">
+                            <option value="">All Severities</option>
+                            <option value="9">Critical (9-10)</option>
+                            <option value="7">High (7-8)</option>
+                            <option value="5">Medium (5-6)</option>
+                            <option value="3">Low (3-4)</option>
+                        </select>
+                    </div>
+                    <div id="threats-feed" class="threats-list">
+                        <div class="placeholder">
+                            <i class="fas fa-inbox"></i>
+                            No threats detected
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Threats Section -->
+            <section id="threats" class="content-section">
+                <h1>Threat Management</h1>
+                <div class="table-controls">
+                    <input type="text" id="threat-search" placeholder="Search threats..." class="search-box">
+                    <button class="btn btn-primary" onclick="refreshThreats()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+                <div id="threats-table-container" class="table-responsive">
+                    <table id="threats-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Source IP</th>
+                                <th>Destination IP</th>
+                                <th>Type</th>
+                                <th>Severity</th>
+                                <th>Confidence</th>
+                                <th>Detected</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="threats-tbody">
+                            <tr><td colspan="8" class="text-center">Loading threats...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics" class="content-section">
+                <h1>Advanced Analytics</h1>
+                <div class="analytics-grid">
+                    <div class="card">
+                        <h3>Threat Sources (Top 10)</h3>
+                        <div id="top-sources" class="list-with-bars"></div>
+                    </div>
+                    <div class="card">
+                        <h3>Attack Vectors</h3>
+                        <div id="attack-vectors" class="list-with-bars"></div>
+                    </div>
+                    <div class="card full-width">
+                        <h3>Detection Methods Performance</h3>
+                        <div id="detection-performance" class="chart-container">
+                            <canvas id="detection-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="content-section">
+                <h1>Configuration & Settings</h1>
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h3>Threat Detection</h3>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="enable-signature" checked> Enable Signature Detection
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="enable-anomaly" checked> Enable Anomaly Detection
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="enable-behavioral" checked> Enable Behavioral Detection
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label>Confidence Threshold: <span id="confidence-value">60</span>%</label>
+                            <input type="range" id="confidence-threshold" min="0" max="100" value="60" step="5" title="Adjust confidence threshold percentage">
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Alerts & Notifications</h3>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="enable-email" /> Email Alerts
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="enable-slack" /> Slack Notifications
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="enable-syslog" /> Syslog Export
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label>Critical Threshold:</label>
+                            <select id="critical-level" title="Set the critical severity threshold level">
+                                <option value="8">Severity 8+</option>
+                                <option value="7">Severity 7+</option>
+                                <option value="6">Severity 6+</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Data Retention</h3>
+                        <div class="setting-item">
+                            <label>Threat Data Retention (days):</label>
+                            <input type="number" id="retention-days" value="90" min="7" max="365" title="Enter the number of days to retain threat data (7-365 days)">
+                        </div>
+                        <div class="setting-item">
+                            <label>Log Level:</label>
+                            <select id="log-level" title="Select the logging level for the application">
+                                <option value="INFO">Info</option>
+                                <option value="DEBUG">Debug</option>
+                                <option value="WARNING">Warning</option>
+                                <option value="ERROR">Error</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-danger" onclick="clearOldData()">
+                            <i class="fas fa-trash"></i> Clear Old Data
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="btn btn-primary" onclick="saveSettings()">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetSettings()">
+                        <i class="fas fa-undo"></i> Reset to Defaults
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Threat Details Modal -->
+    <div id="threat-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeThreatDetails()">&times;</span>
+            <h2>Threat Details</h2>
+            <div id="threat-details-body" class="modal-body">
+                <!-- Threat details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="blockThreat()">Block IP</button>
+                <button class="btn btn-secondary" onclick="closeThreatDetails()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Threat Analyzer Modal -->
+    <div id="analyzer-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAnalyzer()">&times;</span>
+            <h2>Threat Analyzer</h2>
+            <div class="modal-body">
+                <textarea id="analyzer-input" placeholder="Paste threat payload or data here..." rows="6"></textarea>
+                <button class="btn btn-primary" onclick="analyzePayload()">
+                    <i class="fas fa-magnifying-glass"></i> Analyze
+                </button>
+                <div id="analyzer-results" class="analysis-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
