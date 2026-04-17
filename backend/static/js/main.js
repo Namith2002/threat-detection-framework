@@ -1,6 +1,6 @@
 /**
  * Real-Time Cyber Threat Detection Framework
- * Frontend Application - Main JavaScript
+ * Frontend Application - Main JavaScript with Enhanced UI
  */
 
 // Global Configuration
@@ -22,7 +22,12 @@ let monitoringActive = false;
 // ============ INITIALIZATION ============
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Threat Detection Framework Initialized');
+    console.log('🛡️ Threat Detection Framework Initialized');
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
     
     // Initialize WebSocket connection
     initWebSocket();
@@ -41,7 +46,55 @@ document.addEventListener('DOMContentLoaded', function() {
     if (CONFIG.AUTO_REFRESH) {
         setInterval(loadDashboardData, CONFIG.REFRESH_INTERVAL);
     }
+    
+    // Load stored settings
+    loadStoredSettings();
 });
+
+// ============ SETTINGS MANAGEMENT ============
+
+function loadStoredSettings() {
+    const stored = localStorage.getItem('threat_detector_settings');
+    if (stored) {
+        const settings = JSON.parse(stored);
+        document.getElementById('enable-signature').checked = settings.enable_signature !== false;
+        document.getElementById('enable-anomaly').checked = settings.enable_anomaly !== false;
+        document.getElementById('enable-behavioral').checked = settings.enable_behavioral !== false;
+        document.getElementById('confidence-threshold').value = settings.confidence_threshold || 60;
+        document.getElementById('confidence-value').textContent = settings.confidence_threshold || 60;
+        document.getElementById('enable-email').checked = settings.email_alerts || false;
+        document.getElementById('enable-slack').checked = settings.slack_alerts || false;
+        document.getElementById('retention-days').value = settings.retention_days || 90;
+    }
+}
+
+function saveSettings() {
+    const settings = {
+        enable_signature: document.getElementById('enable-signature').checked,
+        enable_anomaly: document.getElementById('enable-anomaly').checked,
+        enable_behavioral: document.getElementById('enable-behavioral').checked,
+        confidence_threshold: document.getElementById('confidence-threshold').value,
+        email_alerts: document.getElementById('enable-email').checked,
+        slack_alerts: document.getElementById('enable-slack').checked,
+        retention_days: document.getElementById('retention-days').value
+    };
+    
+    localStorage.setItem('threat_detector_settings', JSON.stringify(settings));
+    showToast('✅ Settings saved successfully', 'success');
+}
+
+function resetSettings() {
+    if (confirm('Reset all settings to defaults?')) {
+        localStorage.removeItem('threat_detector_settings');
+        location.reload();
+    }
+}
+
+function clearOldData() {
+    if (confirm('Clear old threat data?')) {
+        showToast('🗑️ Old data cleared successfully', 'success');
+    }
+}
 
 // ============ WEBSOCKET MANAGEMENT ============
 
@@ -54,48 +107,48 @@ function initWebSocket() {
     });
 
     socket.on('connect', function() {
-        console.log('WebSocket connected');
-        showToast('Connected to threat detection server', 'success');
+        console.log('✅ WebSocket connected');
+        showToast('🔗 Connected to threat detection server', 'success');
         socket.emit('request_threat_update');
         socket.emit('get_system_status');
     });
 
     socket.on('disconnect', function() {
-        console.log('WebSocket disconnected');
-        showToast('Disconnected from server', 'warning');
+        console.log('❌ WebSocket disconnected');
+        showToast('⚠️ Disconnected from server', 'warning');
     });
 
     socket.on('threat_detected', function(data) {
-        console.log('New threat detected:', data);
+        console.log('🚨 New threat detected:', data);
         handleNewThreat(data);
         updateDashboard();
     });
 
     socket.on('threat_update', function(data) {
-        console.log('Threat update received:', data);
+        console.log('📊 Threat update received:', data);
         threatsData = data.threats || [];
         updateThreatsDisplay();
         updateThreatsTable(threatsData);
     });
 
     socket.on('system_metrics', function(data) {
-        console.log('System metrics:', data);
+        console.log('📈 System metrics:', data);
         updateSystemMetrics(data);
     });
 
     socket.on('system_status', function(data) {
-        console.log('System status:', data);
+        console.log('🖥️ System status:', data);
         updateSystemStatus(data);
     });
 
     socket.on('monitoring_status', function(data) {
-        console.log('Monitoring status:', data);
+        console.log('👁️ Monitoring status:', data);
         monitoringActive = data.status === 'started';
         updateMonitoringStatus();
     });
 
     socket.on('connection_response', function(data) {
-        console.log('Server response:', data);
+        console.log('📨 Server response:', data);
     });
 }
 
@@ -436,7 +489,7 @@ function updateSeverityChart(severityDist) {
 // ============ EVENT LISTENERS ============
 
 function setupEventListeners() {
-    // Navigation
+    // Navigation clicks
     document.querySelectorAll('.navbar-menu a').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
@@ -446,45 +499,97 @@ function setupEventListeners() {
     });
     
     // Monitoring toggle
-    document.getElementById('monitoring-toggle').addEventListener('click', toggleMonitoring);
-    
-    // Threat filtering
-    document.getElementById('severity-filter').addEventListener('change', filterThreats);
-    document.getElementById('threat-filter').addEventListener('input', filterThreats);
-    
-    // Threats table search
-    const threatSearchElem = document.getElementById('threat-search');
-    if (threatSearchElem) {
-        threatSearchElem.addEventListener('input', searchThreatsTable);
+    const monitoringToggle = document.getElementById('monitoring-toggle');
+    if (monitoringToggle) {
+        monitoringToggle.addEventListener('click', toggleMonitoring);
     }
     
-    // Settings range input
-    document.getElementById('confidence-threshold').addEventListener('input', function(e) {
-        document.getElementById('confidence-value').textContent = e.target.value;
+    // Threat filtering
+    const severityFilter = document.getElementById('severity-filter');
+    const threatFilter = document.getElementById('threat-filter');
+    
+    if (severityFilter) {
+        severityFilter.addEventListener('change', filterThreats);
+    }
+    if (threatFilter) {
+        threatFilter.addEventListener('input', filterThreats);
+    }
+    
+    // Threats table search
+    const threatSearch = document.getElementById('threat-search');
+    if (threatSearch) {
+        threatSearch.addEventListener('input', searchThreatsTable);
+    }
+    
+    // Settings confidence threshold
+    const confidenceThreshold = document.getElementById('confidence-threshold');
+    if (confidenceThreshold) {
+        confidenceThreshold.addEventListener('input', function(e) {
+            const valueDisplay = document.getElementById('confidence-value');
+            if (valueDisplay) {
+                valueDisplay.textContent = e.target.value;
+            }
+        });
+    }
+    
+    // Close modals when clicking outside
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal.active').forEach(m => {
+                m.classList.remove('active');
+            });
+        }
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            saveSettings();
+        }
     });
 }
 
 function switchSection(sectionId) {
-    // Hide all sections
+    // Hide all sections with fade out
     document.querySelectorAll('.content-section').forEach(section => {
         section.classList.remove('active');
     });
     
-    // Show selected section
-    document.querySelector(sectionId).classList.add('active');
+    // Show selected section with fade in
+    const targetSection = document.querySelector(sectionId);
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
     
-    // Update navbar
+    // Update navbar active state
     document.querySelectorAll('.navbar-menu a').forEach(link => {
         link.classList.remove('active');
     });
-    document.querySelector(`a[href="${sectionId}"]`).classList.add('active');
+    
+    const activeLink = document.querySelector(`.navbar-menu a[href="${sectionId}"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function toggleMonitoring() {
-    if (monitoringActive) {
-        socket.emit('stop_monitoring');
-    } else {
-        socket.emit('start_monitoring');
+    if (socket) {
+        if (monitoringActive) {
+            socket.emit('stop_monitoring');
+            showToast('⏹️ Monitoring stopped', 'warning');
+        } else {
+            socket.emit('start_monitoring');
+            showToast('▶️ Monitoring started', 'success');
+        }
     }
 }
 
@@ -498,27 +603,39 @@ function filterThreats() {
         
         const matchesSeverity = !severity || threat.severity >= parseInt(severity);
         const matchesSearch = !searchTerm || 
-            threat.threat_type.toLowerCase().includes(searchTerm) ||
-            threat.source_ip.includes(searchTerm) ||
-            threat.destination_ip.includes(searchTerm);
+            (threat.threat_type && threat.threat_type.toLowerCase().includes(searchTerm)) ||
+            (threat.source_ip && threat.source_ip.includes(searchTerm)) ||
+            (threat.destination_ip && threat.destination_ip.includes(searchTerm));
         
         return matchesSeverity && matchesSearch;
     });
     
     // Update display with filtered results
     const feedContainer = document.getElementById('threats-feed');
-    feedContainer.innerHTML = filtered.map(threat => `
+    if (!feedContainer) return;
+    
+    if (!filtered || filtered.length === 0) {
+        feedContainer.innerHTML = `
+            <div class="placeholder">
+                <i class="fas fa-inbox"></i>
+                <p>No threats match your filters</p>
+            </div>
+        `;
+        return;
+    }
+    
+    feedContainer.innerHTML = filtered.slice(0, CONFIG.MAX_THREATS_DISPLAY).map(threat => `
         <div class="threat-item ${getSeverityClass(threat.severity)}">
             <div class="threat-severity">${threat.severity}</div>
             <div class="threat-details">
-                <div class="threat-type">${threat.threat_type || 'Unknown'}</div>
+                <div class="threat-type">${threat.threat_type || 'Unknown'} ${getSeverityLabel(threat.severity)}</div>
                 <div class="threat-meta">
                     ${threat.source_ip || 'N/A'} → ${threat.destination_ip || 'N/A'} | 
                     Confidence: ${(threat.confidence ? (threat.confidence * 100).toFixed(1) : 'N/A')}%
                 </div>
             </div>
             <div class="threat-actions">
-                <button class="btn btn-sm btn-primary" onclick="viewThreatDetails(${threat.id})">
+                <button class="btn btn-sm btn-primary" onclick="viewThreatDetails(${threat.id})" title="View threat details">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
@@ -530,13 +647,15 @@ function searchThreatsTable() {
     const searchTerm = document.getElementById('threat-search').value.toLowerCase();
     const tbody = document.getElementById('threats-tbody');
     
+    if (!tbody) return;
+    
     const filtered = threatsData.filter(threat => {
         // Exclude unknown threats
         if (threat.threat_type === 'unknown') return false;
         return !searchTerm || 
-            threat.threat_type.toLowerCase().includes(searchTerm) ||
-            threat.source_ip.includes(searchTerm) ||
-            threat.destination_ip.includes(searchTerm) ||
+            (threat.threat_type && threat.threat_type.toLowerCase().includes(searchTerm)) ||
+            (threat.source_ip && threat.source_ip.includes(searchTerm)) ||
+            (threat.destination_ip && threat.destination_ip.includes(searchTerm)) ||
             threat.id.toString().includes(searchTerm);
     });
     
@@ -551,42 +670,46 @@ async function viewThreatDetails(threatId) {
         const threat = await response.json();
         
         const modal = document.getElementById('threat-details-modal');
+        if (!modal) return;
+        
         const body = document.getElementById('threat-details-body');
         
         body.innerHTML = `
             <div class="threat-details-container">
                 <div class="detail-row">
                     <span class="detail-label">Threat ID:</span>
-                    <span class="detail-value">${threat.threat_id}</span>
+                    <span class="detail-value">${threat.id || 'N/A'}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Type:</span>
-                    <span class="detail-value">${threat.threat_type}</span>
+                    <span class="detail-value"><strong>${threat.threat_type || 'Unknown'}</strong></span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Source IP:</span>
-                    <span class="detail-value">${threat.source_ip}</span>
+                    <span class="detail-value"><code>${threat.source_ip || 'N/A'}</code></span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Destination IP:</span>
-                    <span class="detail-value">${threat.destination_ip}</span>
+                    <span class="detail-value"><code>${threat.destination_ip || 'N/A'}</code></span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Severity:</span>
-                    <span class="detail-value severity-${threat.severity >= 8 ? 'critical' : 'high'}">${threat.severity}/10</span>
+                    <span class="detail-value severity-${threat.severity >= 8 ? 'critical' : 'high'}">${getSeverityLabel(threat.severity)} (${threat.severity}/10)</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Confidence:</span>
-                    <span class="detail-value">${(threat.confidence ? (threat.confidence * 100).toFixed(1) : 'N/A')}%</span>
+                    <span class="detail-value">${(threat.confidence ? (threat.confidence * 100).toFixed(2) : 'N/A')}%</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Detected At:</span>
-                    <span class="detail-value">${new Date(threat.detected_at).toLocaleString()}</span>
+                    <span class="detail-value">${threat.detected_at ? new Date(threat.detected_at).toLocaleString() : 'N/A'}</span>
                 </div>
+                ${threat.payload ? `
                 <div class="detail-row">
                     <span class="detail-label">Payload:</span>
                     <pre class="detail-value payload">${JSON.stringify(threat.payload, null, 2)}</pre>
                 </div>
+                ` : ''}
             </div>
         `;
         
@@ -594,39 +717,54 @@ async function viewThreatDetails(threatId) {
         
     } catch (error) {
         console.error('Error loading threat details:', error);
-        showToast('Error loading threat details', 'error');
+        showToast('❌ Error loading threat details', 'error');
     }
 }
 
 function closeThreatDetails() {
-    document.getElementById('threat-details-modal').classList.remove('active');
+    const modal = document.getElementById('threat-details-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
 }
 
 async function blockThreat() {
-    showToast('IP address added to blocklist', 'success');
+    showToast('🚫 IP address added to blocklist', 'success');
     closeThreatDetails();
 }
 
 async function refreshThreats() {
     await loadThreatsData();
-    showToast('Threats refreshed', 'success');
+    showToast('🔄 Threats refreshed', 'success');
 }
 
 // ============ THREAT ANALYZER ============
 
 function openAnalyzer() {
-    document.getElementById('analyzer-modal').classList.add('active');
+    const modal = document.getElementById('analyzer-modal');
+    if (modal) {
+        modal.classList.add('active');
+        // Focus on input
+        setTimeout(() => {
+            document.getElementById('analyzer-input').focus();
+        }, 300);
+    }
 }
 
 function closeAnalyzer() {
-    document.getElementById('analyzer-modal').classList.remove('active');
+    const modal = document.getElementById('analyzer-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.getElementById('analyzer-input').value = '';
+        document.getElementById('analyzer-results').innerHTML = '';
+    }
 }
 
 async function analyzePayload() {
     const payload = document.getElementById('analyzer-input').value;
     
     if (!payload.trim()) {
-        showToast('Please enter a payload to analyze', 'warning');
+        showToast('⚠️ Please enter a payload to analyze', 'warning');
         return;
     }
     
@@ -641,70 +779,55 @@ async function analyzePayload() {
         
         const result = await response.json();
         displayAnalysisResults(result);
+        showToast('✅ Analysis completed', 'success');
         
     } catch (error) {
         console.error('Error analyzing threat:', error);
-        showToast('Error analyzing threat', 'error');
+        showToast('❌ Error analyzing threat', 'error');
     }
 }
 
 function displayAnalysisResults(analysis) {
     const resultsDiv = document.getElementById('analyzer-results');
+    if (!resultsDiv) return;
     
     resultsDiv.innerHTML = `
         <div class="analysis-results-container">
-            <h3>Analysis Results</h3>
+            <h3>📊 Analysis Results</h3>
             <div class="result-section">
                 <h4>Classification</h4>
-                <p><strong>Type:</strong> ${analysis.classification.type}</p>
-                <p><strong>Severity:</strong> <span class="severity-${analysis.classification.severity}">${analysis.classification.severity}/10</span></p>
-                <p><strong>Confidence:</strong> ${(analysis.classification.confidence ? (analysis.classification.confidence * 100).toFixed(1) : 'N/A')}%</p>
-                <p><strong>Description:</strong> ${analysis.classification.description}</p>
+                <p><strong>Type:</strong> ${analysis.classification?.type || 'Unknown'}</p>
+                <p><strong>Severity:</strong> <span class="severity-${analysis.classification?.severity >= 8 ? 'critical' : 'high'}">${getSeverityLabel(analysis.classification?.severity)} (${analysis.classification?.severity || 0}/10)</span></p>
+                <p><strong>Confidence:</strong> ${(analysis.classification?.confidence ? (analysis.classification.confidence * 100).toFixed(2) : 'N/A')}%</p>
+                <p><strong>Description:</strong> ${analysis.classification?.description || 'No description available'}</p>
             </div>
             <div class="result-section">
                 <h4>Extracted Features</h4>
-                <pre>${JSON.stringify(analysis.analysis.payload_analysis, null, 2)}</pre>
+                <pre>${JSON.stringify(analysis.analysis?.payload_analysis || {}, null, 2)}</pre>
             </div>
         </div>
     `;
 }
 
 function openExport() {
-    alert('Export functionality - would export current threat data');
+    if (threatsData.length === 0) {
+        showToast('⚠️ No threat data to export', 'warning');
+        return;
+    }
+    
+    const dataStr = JSON.stringify(threatsData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `threats_${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    
+    showToast('💾 Threat data exported successfully', 'success');
 }
 
 function openSettings() {
     switchSection('#settings');
-}
-
-// ============ SETTINGS ============
-
-function saveSettings() {
-    const settings = {
-        enable_signature: document.getElementById('enable-signature').checked,
-        enable_anomaly: document.getElementById('enable-anomaly').checked,
-        enable_behavioral: document.getElementById('enable-behavioral').checked,
-        confidence_threshold: document.getElementById('confidence-threshold').value,
-        email_alerts: document.getElementById('enable-email').checked,
-        slack_alerts: document.getElementById('enable-slack').checked,
-        retention_days: document.getElementById('retention-days').value
-    };
-    
-    localStorage.setItem('threat_detector_settings', JSON.stringify(settings));
-    showToast('Settings saved successfully', 'success');
-}
-
-function resetSettings() {
-    if (confirm('Reset all settings to defaults?')) {
-        localStorage.removeItem('threat_detector_settings');
-        location.reload();
-    }
-}
-
-function clearOldData() {
-    if (confirm('Clear old threat data?')) {
-        showToast('Old data cleared successfully', 'success');
-    }
 }
 
 // ============ UTILITIES ============
@@ -715,28 +838,9 @@ function getSeverityClass(severity) {
     return '';
 }
 
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 4000);
-}
-
-function showNotification(threat) {
-    if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Critical Threat Detected', {
-            body: `${threat.threat_type} from ${threat.source_ip} - Severity: ${threat.severity}/10`,
-            icon: '/static/images/threat-icon.png'
-        });
-    }
-}
-
-function updateDashboard() {
-    loadDashboardData();
+function getSeverityLabel(severity) {
+    if (severity >= 8) return '🔴 CRITICAL';
+    if (severity >= 6) return '🟠 HIGH';
+    if (severity >= 4) return '🟡 MEDIUM';
+    return '🟢 LOW';
 }

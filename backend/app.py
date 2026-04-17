@@ -15,12 +15,12 @@ import os
 from dotenv import load_dotenv
 
 # Import custom modules
-from .utils.threat_detector import ThreatDetector
-from .utils.threat_classifier import ThreatClassifier
-from .utils.data_analyzer import DataAnalyzer
-from .utils.gemini_analyzer import GeminiThreatAnalyzer
-from .database.models import db, Threat, Alert, SystemMetrics
-from .config import Config
+from utils.threat_detector import ThreatDetector
+from utils.threat_classifier import ThreatClassifier
+from utils.data_analyzer import DataAnalyzer
+from utils.gemini_analyzer import GeminiThreatAnalyzer
+from database.models import db, Threat, Alert, SystemMetrics
+from config import Config
 
 # Load environment variables
 load_dotenv()
