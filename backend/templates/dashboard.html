@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Threat Detection Framework - Advanced Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-custom.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-shield-alt"></i>
+                <span>Threat Detection</span>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="javascript:void(0)" onclick="switchTab('dashboard')" class="active">Dashboard</a></li>
+                <li><a href="javascript:void(0)" onclick="switchTab('threats')">Threats</a></li>
+                <li><a href="javascript:void(0)" onclick="switchTab('incidents')">Incidents</a></li>
+                <li><a href="javascript:void(0)" onclick="switchTab('analytics')">Analytics</a></li>
+                <li><a href="javascript:void(0)" onclick="switchTab('map')">Map</a></li>
+                <li><a href="javascript:void(0)" onclick="switchTab('reports')">Reports</a></li>
+            </ul>
+            <div class="navbar-status">
+                <button onclick="toggleTheme()" class="btn btn-sm btn-secondary" title="Toggle Theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <span id="monitoring-status" class="status-badge inactive">
+                    <i class="fas fa-circle"></i> Monitoring: OFF
+                </span>
+                <button id="monitoring-toggle" onclick="toggleMonitoring()" class="btn btn-sm btn-primary">
+                    <i class="fas fa-play"></i> Start
+                </button>
+                <button onclick="logout()" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-main">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3><i class="fas fa-chart-line"></i> Quick Stats</h3>
+                <div class="stat-card">
+                    <span class="stat-label">Threats (24h)</span>
+                    <span class="stat-value" id="daily-threats">0</span>
+                </div>
+                <div class="stat-card critical">
+                    <span class="stat-label">Critical</span>
+                    <span class="stat-value" id="critical-threats">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Incidents</span>
+                    <span class="stat-value" id="incident-count">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Alerts</span>
+                    <span class="stat-value" id="alert-count">0</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3><i class="fas fa-server"></i> System Health</h3>
+                <div class="metric">
+                    <label>CPU Usage</label>
+                    <div class="metric-bar">
+                        <div id="cpu-meter" class="metric-fill"></div>
+                    </div>
+                    <span id="cpu-value">0%</span>
+                </div>
+                <div class="metric">
+                    <label>Memory Usage</label>
+                    <div class="metric-bar">
+                        <div id="memory-meter" class="metric-fill"></div>
+                    </div>
+                    <span id="memory-value">0%</span>
+                </div>
+                <div class="metric">
+                    <label>Network Traffic</label>
+                    <div class="metric-bar">
+                        <div id="network-meter" class="metric-fill"></div>
+                    </div>
+                    <span id="network-value">0 Mbps</span>
+                </div>
+                <div class="metric">
+                    <label>Disk Usage</label>
+                    <div class="metric-bar">
+                        <div id="disk-meter" class="metric-fill"></div>
+                    </div>
+                    <span id="disk-value">0%</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3><i class="fas fa-tools"></i> Tools</h3>
+                <button class="btn btn-full btn-primary" onclick="switchTab('threats')">
+                    <i class="fas fa-search"></i> Threat Analysis
+                </button>
+                <button class="btn btn-full btn-primary" onclick="switchTab('incidents')">
+                    <i class="fas fa-flag"></i> Incident Response
+                </button>
+                <button class="btn btn-full btn-primary" onclick="switchTab('reports')">
+                    <i class="fas fa-file-pdf"></i> Generate Report
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <h1><i class="fas fa-tachometer-alt"></i> Real-Time Threat Dashboard</h1>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Key Metrics</h2>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                            <div style="text-align: center; padding: 1rem;">
+                                <div style="font-size: 2.5rem; font-weight: 700; color: #ef4444;" id="total-threats">0</div>
+                                <div style="color: var(--text-secondary); margin-top: 0.5rem;">Total Threats</div>
+                            </div>
+                            <div style="text-align: center; padding: 1rem;">
+                                <div style="font-size: 2.5rem; font-weight: 700; color: #f59e0b;" id="avg-severity">0</div>
+                                <div style="color: var(--text-secondary); margin-top: 0.5rem;">Avg Severity</div>
+                            </div>
+                            <div style="text-align: center; padding: 1rem;">
+                                <div style="font-size: 2.5rem; font-weight: 700; color: #3b82f6;" id="avg-confidence">0</div>
+                                <div style="color: var(--text-secondary); margin-top: 0.5rem;">Avg Confidence</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Threat Trend (24 Hours)</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="threatTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Severity Distribution</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="severityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Top Threat Types</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="threatTypeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Recent Threats</h2>
+                        <button class="btn btn-sm btn-primary" onclick="loadRecentThreats()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body" id="threats-list">
+                        <p style="text-align: center; color: var(--text-secondary);">Loading threats...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Threats Intelligence Section -->
+            <section id="threats" class="content-section">
+                <h1><i class="fas fa-search"></i> Threat Intelligence</h1>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Advanced Threat Search</h2>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div class="form-group">
+                                <label class="form-label">Threat Type</label>
+                                <select id="filter-threat-type" class="form-select">
+                                    <option value="">All Types</option>
+                                    <option value="malware">Malware</option>
+                                    <option value="ddos">DDoS</option>
+                                    <option value="sqli">SQL Injection</option>
+                                    <option value="xss">XSS</option>
+                                    <option value="brute_force">Brute Force</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Severity</label>
+                                <select id="filter-severity" class="form-select">
+                                    <option value="">All Severities</option>
+                                    <option value="critical">Critical (8-10)</option>
+                                    <option value="high">High (6-7)</option>
+                                    <option value="medium">Medium (4-5)</option>
+                                    <option value="low">Low (1-3)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Search IP</label>
+                                <input type="text" id="filter-ip" class="form-control" placeholder="Enter source IP">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-full btn-primary" onclick="filterThreats()">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Detected Threats</h2>
+                    </div>
+                    <div class="card-body" id="threats-filtered-list">
+                        <p style="text-align: center; color: var(--text-secondary);">Click Filter to view threats</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Incidents Management Section -->
+            <section id="incidents" class="content-section">
+                <h1><i class="fas fa-flag"></i> Incident Management</h1>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Create New Incident</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">Title</label>
+                            <input type="text" id="incident-title" class="form-control" placeholder="Incident title">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea id="incident-description" class="form-control" rows="3" placeholder="Incident description"></textarea>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">Severity</label>
+                                <select id="incident-severity" class="form-select">
+                                    <option value="5">Medium (5)</option>
+                                    <option value="8">High (8)</option>
+                                    <option value="10">Critical (10)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Threat Type</label>
+                                <select id="incident-threat-type" class="form-select">
+                                    <option value="malware">Malware</option>
+                                    <option value="ddos">DDoS</option>
+                                    <option value="sqli">SQL Injection</option>
+                                    <option value="xss">XSS</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="createIncident()">
+                            <i class="fas fa-plus"></i> Create Incident
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Active Incidents</h2>
+                        <button class="btn btn-sm btn-primary" onclick="loadIncidents()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body" id="incidents-list">
+                        <p style="text-align: center; color: var(--text-secondary);">Loading incidents...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics" class="content-section">
+                <h1><i class="fas fa-chart-bar"></i> Analytics & Reports</h1>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Threat Overview</h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="threat-overview" style="font-size: 0.9rem; line-height: 1.8;">
+                                <p><i class="fas fa-shield-alt"></i> Loading statistics...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Top Attacker IPs</h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="top-ips" style="font-size: 0.9rem;">
+                                <p style="color: var(--text-secondary);">Loading IPs...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Response Effectiveness</h2>
+                        </div>
+                        <div class="card-body">
+                            <div style="text-align: center;">
+                                <div style="font-size: 2.5rem; font-weight: 700; color: #10b981;">85%</div>
+                                <p style="color: var(--text-secondary); margin-top: 0.5rem;">Average Effectiveness</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Threats by Time of Day</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="threatTimeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Network Map Section -->
+            <section id="map" class="content-section">
+                <h1><i class="fas fa-globe"></i> Network Geolocation Map</h1>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Threat Geolocation</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="map-container" style="height: 600px; background: linear-gradient(135deg, #e0e7ff 0%, #fce7f3 100%); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
+                            <div style="text-align: center;">
+                                <i class="fas fa-map" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                                <p>Map visualization will be displayed here</p>
+                                <p style="font-size: 0.875rem; margin-top: 0.5rem;">Integration with Leaflet.js</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Top Threat Origins</h2>
+                    </div>
+                    <div class="card-body" id="threat-origins" style="max-height: 450px; overflow-y: auto;">
+                        <p style="text-align: center; color: var(--text-secondary);">Loading geolocation data...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reports Section -->
+            <section id="reports" class="content-section">
+                <h1><i class="fas fa-file-pdf"></i> Reports & Export</h1>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Generate Report</h2>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div class="form-group">
+                                <label class="form-label">Report Type</label>
+                                <select id="report-type" class="form-select">
+                                    <option value="daily">Daily Report</option>
+                                    <option value="weekly">Weekly Report</option>
+                                    <option value="monthly">Monthly Report</option>
+                                    <option value="custom">Custom Report</option>
+                                    <option value="threat_summary">Threat Summary</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Export Format</label>
+                                <select id="export-format" class="form-select">
+                                    <option value="pdf">PDF</option>
+                                    <option value="csv">CSV</option>
+                                    <option value="json">JSON</option>
+                                    <option value="html">HTML</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Date Range</label>
+                                <input type="date" id="report-start-date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Date</label>
+                                <input type="date" id="report-end-date" class="form-control">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%;" onclick="generateReport()">
+                            <i class="fas fa-file-download"></i> Generate & Download
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Recent Reports</h2>
+                    </div>
+                    <div class="card-body" id="reports-list">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Report</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                    <th>Format</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reports-table-body">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--text-secondary);">No reports generated yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="threatDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Threat Details</h2>
+                <button class="modal-close" onclick="closeModal('threatDetailsModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="threat-details-content">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

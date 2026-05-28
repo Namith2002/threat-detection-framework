@@ -33,6 +33,11 @@ class Config:
     # CORS Settings
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
     
+    # Authentication Settings
+    JWT_SECRET = os.getenv('JWT_SECRET', 'jwt-secret-key-change-in-production')
+    JWT_ALGORITHM = 'HS256'
+    JWT_EXPIRY_HOURS = 24
+    
     # Gemini AI Configuration
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-pro')
@@ -65,9 +70,34 @@ class Config:
         'slack_alerts': os.getenv('SLACK_ALERTS', 'false').lower() == 'true'
     }
     
+    # Email Configuration
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'true').lower() == 'true'
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@threatdetection.local')
+    
+    # Slack Integration
+    SLACK_WEBHOOK_URL = os.getenv('SLACK_WEBHOOK_URL', '')
+    
+    # GeoIP Configuration
+    GEOIP_DB_PATH = os.getenv('GEOIP_DB_PATH', 'geoip/GeoLite2-City.mmdb')
+    
+    # Report Configuration
+    REPORTS = {
+        'export_formats': ['pdf', 'csv', 'json', 'html'],
+        'export_path': 'exports/',
+        'max_file_size_mb': 50
+    }
+    
     # Logging
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     LOG_FILE = 'logs/threat_detection.log'
+    
+    # UI Configuration
+    THEME = os.getenv('THEME', 'dark')  # dark or light
+    ITEMS_PER_PAGE = 20
 
 
 class DevelopmentConfig(Config):

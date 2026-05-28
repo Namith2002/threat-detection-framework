@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User & Settings Management - Threat Detection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-custom.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-cog"></i>
+                <span>Settings & Admin</span>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="/dashboard" class="active">Dashboard</a></li>
+                <li><a href="javascript:void(0)" onclick="switchTab('users')">Users</a></li>
+                <li><a href="javascript:void(0)" onclick="switchTab('settings')">Settings</a></li>
+                <li><a href="javascript:void(0)" onclick="switchTab('audit')">Audit Log</a></li>
+            </ul>
+            <div class="navbar-status">
+                <button onclick="logout()" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-main">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3><i class="fas fa-user-tie"></i> Administration</h3>
+                <button class="btn btn-full btn-primary" onclick="switchTab('users')">
+                    <i class="fas fa-users"></i> Users
+                </button>
+                <button class="btn btn-full btn-primary" onclick="switchTab('roles')">
+                    <i class="fas fa-key"></i> Roles & Permissions
+                </button>
+                <button class="btn btn-full btn-primary" onclick="switchTab('settings')">
+                    <i class="fas fa-sliders-h"></i> System Settings
+                </button>
+                <button class="btn btn-full btn-primary" onclick="switchTab('audit')">
+                    <i class="fas fa-history"></i> Audit Log
+                </button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3><i class="fas fa-bell"></i> Notifications</h3>
+                <div class="stat-card">
+                    <span class="stat-label">Unread</span>
+                    <span class="stat-value" id="unread-notifications">0</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Users Section -->
+            <section id="users" class="content-section active">
+                <h1><i class="fas fa-users"></i> User Management</h1>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Create New User</h2>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div class="form-group">
+                                <label class="form-label">Username</label>
+                                <input type="text" id="new-username" class="form-control" placeholder="username">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="new-email" class="form-control" placeholder="email@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" id="new-fullname" class="form-control" placeholder="Full Name">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Role</label>
+                                <select id="new-role" class="form-select">
+                                    <option value="viewer">Viewer</option>
+                                    <option value="analyst">Analyst</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password</label>
+                                <input type="password" id="new-password" class="form-control" placeholder="Password">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%;" onclick="createNewUser()">
+                            <i class="fas fa-plus"></i> Create User
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Active Users</h2>
+                        <button class="btn btn-sm btn-primary" onclick="loadUsers()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Last Login</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table">
+                                <tr>
+                                    <td colspan="6" style="text-align: center;">Loading users...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="content-section">
+                <h1><i class="fas fa-sliders-h"></i> System Settings</h1>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">General Settings</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">Application Theme</label>
+                            <select class="form-select" onchange="changeTheme(this.value)">
+                                <option value="light">Light</option>
+                                <option value="dark" selected>Dark</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Items Per Page</label>
+                            <input type="number" class="form-control" value="20" min="5" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Session Timeout (minutes)</label>
+                            <input type="number" class="form-control" value="60" min="5" max="480">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Threat Detection Settings</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">Minimum Threat Severity to Alert</label>
+                            <select class="form-select">
+                                <option value="1">Low (1+)</option>
+                                <option value="4">Medium (4+)</option>
+                                <option value="6">High (6+)</option>
+                                <option value="8" selected>Critical (8+)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Threat Analysis Confidence Threshold</label>
+                            <input type="range" class="form-control" min="0" max="100" value="60" step="5">
+                            <small>Current: <span id="confidence-value">60</span>%</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Auto-Block Threat Sources</label>
+                            <select class="form-select">
+                                <option value="false">Disabled</option>
+                                <option value="true">Enabled</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Alert & Notification Settings</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" checked> Email Alerts on Critical Threats
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox"> Slack Integration
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" checked> Browser Notifications
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Webhook URL (optional)</label>
+                            <input type="url" class="form-control" placeholder="https://example.com/webhook">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">API Keys & Integration</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">Gemini API Key</label>
+                            <input type="password" class="form-control" placeholder="•••••••••••••••••" id="gemini-key">
+                            <small>Used for AI-powered threat analysis</small>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Audit Log Section -->
+            <section id="audit" class="content-section">
+                <h1><i class="fas fa-history"></i> Audit Log</h1>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Activity Log</h2>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" class="form-control" style="width: 200px;" placeholder="Search...">
+                            <button class="btn btn-sm btn-primary">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Resource</th>
+                                    <th>Status</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-log">
+                                <tr>
+                                    <td colspan="6" style="text-align: center;">Loading audit log...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Roles Section -->
+            <section id="roles" class="content-section">
+                <h1><i class="fas fa-key"></i> Roles & Permissions</h1>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Admin</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="badge badge-success" style="margin-bottom: 0.5rem;">
+                                Full Access
+                            </div>
+                            <ul style="list-style: none; padding: 0;">
+                                <li><i class="fas fa-check text-success"></i> Manage Users</li>
+                                <li><i class="fas fa-check text-success"></i> View All Threats</li>
+                                <li><i class="fas fa-check text-success"></i> Manage Incidents</li>
+                                <li><i class="fas fa-check text-success"></i> Generate Reports</li>
+                                <li><i class="fas fa-check text-success"></i> System Settings</li>
+                                <li><i class="fas fa-check text-success"></i> Audit Logs</li>
+                                <li><i class="fas fa-check text-success"></i> Start/Stop Monitoring</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Analyst</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="badge badge-info" style="margin-bottom: 0.5rem;">
+                                Limited Access
+                            </div>
+                            <ul style="list-style: none; padding: 0;">
+                                <li><i class="fas fa-check text-success"></i> View All Threats</li>
+                                <li><i class="fas fa-check text-success"></i> Manage Incidents</li>
+                                <li><i class="fas fa-check text-success"></i> Generate Reports</li>
+                                <li><i class="fas fa-times text-danger"></i> Manage Users</li>
+                                <li><i class="fas fa-times text-danger"></i> System Settings</li>
+                                <li><i class="fas fa-times text-danger"></i> Audit Logs</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Viewer</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="badge badge-warning" style="margin-bottom: 0.5rem;">
+                                Read-Only Access
+                            </div>
+                            <ul style="list-style: none; padding: 0;">
+                                <li><i class="fas fa-check text-success"></i> View Threats</li>
+                                <li><i class="fas fa-check text-success"></i> View Incidents</li>
+                                <li><i class="fas fa-check text-success"></i> View Reports</li>
+                                <li><i class="fas fa-times text-danger"></i> Create Incidents</li>
+                                <li><i class="fas fa-times text-danger"></i> Manage Users</li>
+                                <li><i class="fas fa-times text-danger"></i> System Settings</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(tabName)?.classList.add('active');
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+
+        function loadUsers() {
+            const token = localStorage.getItem('token');
+            fetch('/api/users', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(r => r.json())
+            .then(users => {
+                const tbody = document.getElementById('users-table');
+                if (!tbody) return;
+                
+                if (users.error) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: red;">${users.error}</td></tr>`;
+                    return;
+                }
+                
+                if (users.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;">No users found</td></tr>`;
+                    return;
+                }
+                
+                tbody.innerHTML = users.map(user => `
+                    <tr>
+                        <td><strong>${user.username}</strong></td>
+                        <td>${user.email}</td>
+                        <td><span class="badge badge-${user.role === 'admin' ? 'success' : 'info'}">${user.role.toUpperCase()}</span></td>
+                        <td><span class="badge badge-${user.is_active ? 'success' : 'danger'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
+                        <td>${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})" title="Delete User" ${user.username === 'admin' ? 'disabled' : ''} style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            })
+            .catch(error => {
+                console.error('Error loading users:', error);
+                const tbody = document.getElementById('users-table');
+                if (tbody) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: red;">Error loading users</td></tr>`;
+                }
+            });
+        }
+
+        function createNewUser() {
+            const username = document.getElementById('new-username').value.trim();
+            const email = document.getElementById('new-email').value.trim();
+            const fullName = document.getElementById('new-fullname').value.trim();
+            const role = document.getElementById('new-role').value;
+            const password = document.getElementById('new-password').value;
+            
+            if (!username || !email || !fullName || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            const token = localStorage.getItem('token');
+            fetch('/api/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    username,
+                    email,
+                    full_name: fullName,
+                    role,
+                    password
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User created successfully');
+                    document.getElementById('new-username').value = '';
+                    document.getElementById('new-email').value = '';
+                    document.getElementById('new-fullname').value = '';
+                    document.getElementById('new-password').value = '';
+                    loadUsers();
+                } else {
+                    alert(data.message || 'Failed to create user');
+                }
+            })
+            .catch(error => {
+                console.error('Error creating user:', error);
+                alert('An error occurred');
+            });
+        }
+
+        function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+            const token = localStorage.getItem('token');
+            fetch(`/api/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User deleted successfully');
+                    loadUsers();
+                } else {
+                    alert(data.message || 'Failed to delete user');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting user:', error);
+                alert('An error occurred');
+            });
+        }
+
+        function changeTheme(theme) {
+            localStorage.setItem('theme', theme);
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+
+        // Authentication & Role Check
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            
+            if (!token || !userStr) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            const user = JSON.parse(userStr);
+            if (user.role !== 'admin') {
+                window.location.href = '/dashboard';
+                return;
+            }
+            
+            // Apply theme
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            if (currentTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+            
+            loadUsers();
+        });
+    </script>
+</body>
+</html>
